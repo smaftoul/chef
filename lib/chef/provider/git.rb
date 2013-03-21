@@ -232,7 +232,11 @@ class Chef
       def run_options(run_opts={})
         run_opts[:user] = @new_resource.user if @new_resource.user
         run_opts[:group] = @new_resource.group if @new_resource.group
-        run_opts[:environment] = {"GIT_SSH" => @new_resource.ssh_wrapper} if @new_resource.ssh_wrapper
+        if @new_resource.ssh_wrapper || @new_resource.user
+          run_opts[:environment] ||= {}
+          run_opts[:environment]["GIT_SSH"] = @new_resource.ssh_wrapper if @new_resource.ssh_wrapper
+          run_opts[:environment]["HOME"]    = node[:etc][:passwd][@new_resource.user][:dir] if @new_resource.user
+        end
         run_opts[:log_tag] = @new_resource.to_s
         run_opts[:log_level] ||= :debug
         if run_opts[:log_level] == :info

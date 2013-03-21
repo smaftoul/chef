@@ -32,6 +32,13 @@ describe Chef::Provider::Git do
     @resource.destination "/my/deploy/dir"
     @resource.revision "d35af14d41ae22b19da05d7d03a0bafc321b244c"
     @node = Chef::Node.new
+    # Needed because we set the "HOME" environment variable based on the
+    # content of node[:etc][:passwd] when a user attribute is passed to
+    # the git resource
+    @node.default[:etc][:passwd] = {
+      'whois'       => { 'dir' => '/home/whois' },
+      'deployNinja' => { 'dir' => '/home/deployNinja'}
+    }
     @events = Chef::EventDispatch::Dispatcher.new
     @run_context = Chef::RunContext.new(@node, {}, @events)
     @provider = Chef::Provider::Git.new(@resource, @run_context)
@@ -160,7 +167,7 @@ SHAS
     @resource.ssh_wrapper "do_it_this_way.sh"
     expected_cmd = "git clone  git://github.com/opscode/chef.git /my/deploy/dir"
     @provider.should_receive(:shell_out!).with(expected_cmd, :user => "deployNinja",
-                                                :environment =>{"GIT_SSH"=>"do_it_this_way.sh"}, :log_level => :info, :log_tag => "git[web2.0 app]", :live_stream => STDOUT)
+                                                :environment =>{"GIT_SSH"=>"do_it_this_way.sh", "HOME"=>"/home/deployNinja"}, :log_level => :info, :log_tag => "git[web2.0 app]", :live_stream => STDOUT)
 
     @provider.clone
   end
@@ -171,7 +178,7 @@ SHAS
     @resource.ssh_wrapper "do_it_this_way.sh"
     expected_cmd = "git clone  git://github.com/opscode/chef.git /Application\\ Support/with/space"
     @provider.should_receive(:shell_out!).with(expected_cmd, :user => "deployNinja",
-                                                :environment =>{"GIT_SSH"=>"do_it_this_way.sh"}, :log_level => :info, :log_tag => "git[web2.0 app]", :live_stream => STDOUT)
+                                                :environment =>{"GIT_SSH"=>"do_it_this_way.sh", "HOME"=>"/home/deployNinja"}, :log_level => :info, :log_tag => "git[web2.0 app]", :live_stream => STDOUT)
     @provider.clone
   end
 
@@ -217,7 +224,7 @@ SHAS
     @resource.user("whois")
     @resource.group("thisis")
     expected_cmd = "git fetch origin && git fetch origin --tags && git reset --hard d35af14d41ae22b19da05d7d03a0bafc321b244c"
-    @provider.should_receive(:shell_out!).with(expected_cmd, :cwd => "/my/deploy/dir",
+    @provider.should_receive(:shell_out!).with(expected_cmd, :cwd => "/my/deploy/dir", :environment => {'HOME' => '/home/whois' },
                                                 :user => "whois", :group => "thisis", :log_level => :debug, :log_tag => "git[web2.0 app]")
     @provider.fetch_updates
   end
